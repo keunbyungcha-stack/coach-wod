@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>코치 WOD 관리</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: #4F46E5;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 1rem;
+            text-align: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .nav-tab.active {
+            background: #f0f0f0;
+            font-weight: bold;
+        }
+
+        .content {
+            padding: 1rem;
+        }
+
+        .view {
+            display: none;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .calendar-header {
+            background: #4F46E5;
+            color: white;
+            padding: 0.5rem;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+
+        .calendar-day {
+            background: white;
+            padding: 0.5rem;
+            text-align: center;
+            cursor: pointer;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calendar-day:hover {
+            background: #f0f0f0;
+        }
+
+        .calendar-day.today {
+            background: #e3f2fd;
+            color: #1976d2;
+            font-weight: bold;
+        }
+
+        .calendar-day.selected {
+            background: #4F46E5;
+            color: white;
+        }
+
+        .calendar-day.has-wod {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .month-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .month-nav button {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .btn:hover {
+            background: #3730a3;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        .form-group textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: #666;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .quick-actions button {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .wod-display {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .level-section {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .level-section.beginner {
+            background: #e8f5e8;
+            border-color: #4caf50;
+        }
+
+        .level-section.intermediate {
+            background: #fff3e0;
+            border-color: #ff9800;
+        }
+
+        .level-section.advanced {
+            background: #ffebee;
+            border-color: #f44336;
+        }
+
+        .level-title {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                margin: 0;
+            }
+
+            .content {
+                padding: 0.5rem;
+            }
+
+            .calendar-day {
+                min-height: 35px;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏋️ 코치 WOD 관리</h1>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showView('calendar')">📅 캘린더</button>
+            <button class="nav-tab" onclick="showView('today')">📝 오늘</button>
+        </div>
+
+        <div class="content">
+            <!-- 캘린더 뷰 -->
+            <div id="calendar-view" class="view active">
+                <div class="month-nav">
+                    <button onclick="changeMonth(-1)">← 이전</button>
+                    <h2 id="current-month">2025년 8월</h2>
+                    <button onclick="changeMonth(1)">다음 →</button>
+                </div>
+                <div class="calendar" id="calendar"></div>
+                <div id="selected-date-wod"></div>
+            </div>
+
+            <!-- 오늘 뷰 -->
+            <div id="today-view" class="view">
+                <div id="today-wod-display"></div>
+            </div>
+
+            <!-- WOD 편집 폼 -->
+            <div id="edit-view" class="view">
+                <h3 id="form-title">WOD 작성</h3>
+                
+                <div class="form-group">
+                    <label for="workout-time">⏱️ 워크아웃 시간</label>
+                    <textarea id="workout-time" rows="2" placeholder="예: (20/10x8)6, AMRAP 20분"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="conditioning">💪 컨디셔닝 메뉴</label>
+                    <textarea id="conditioning" rows="4" placeholder="오늘의 메인 운동"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="monthly-mission">🎯 월별 미션</label>
+                    <textarea id="monthly-mission" rows="3" placeholder="이번 달 집중 목표"></textarea>
+                </div>
+
+                <div class="level-section beginner">
+                    <div class="level-title">🟢 초급자 지도 방향</div>
+                    <textarea id="beginner-notes" rows="3" placeholder="초급자를 위한 지도사항"></textarea>
+                </div>
+
+                <div class="level-section intermediate">
+                    <div class="level-title">🟡 중급자 지도 방향</div>
+                    <textarea id="intermediate-notes" rows="3" placeholder="중급자를 위한 지도사항"></textarea>
+                </div>
+
+                <div class="level-section advanced">
+                    <div class="level-title">🔴 고급자 지도 방향</div>
+                    <textarea id="advanced-notes" rows="3" placeholder="고급자를 위한 지도사항"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="general-notes">📝 전체 클래스 메모</label>
+                    <textarea id="general-notes" rows="3" placeholder="출석, 컨디션 등"></textarea>
+                </div>
+
+                <div class="quick-actions">
+                    <button onclick="cancelEdit()">취소</button>
+                    <button onclick="saveWod()">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('📱 앱 시작!');
+        
+        // 전역 변수
+        let currentDate = new Date();
+        let selectedDate = null;
+        let currentView = 'calendar';
+
+        // 로컬 스토리지 함수
+        function loadWods() {
+            const saved = localStorage.getItem('coach-wods');
+            return saved ? JSON.parse(saved) : {};
+        }
+
+        function saveWods(wods) {
+            localStorage.setItem('coach-wods', JSON.stringify(wods));
+        }
+
+        // 날짜 포맷 함수
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function formatDateKorean(date) {
+            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
+            return date.toLocaleDateString('ko-KR', options);
+        }
+
+        // 뷰 전환
+        function showView(viewName) {
+            console.log('뷰 전환:', viewName);
+            
+            // 모든 뷰 숨기기
+            document.querySelectorAll('.view').forEach(view => {
+                view.classList.remove('active');
+            });
+            
+            // 모든 탭 비활성화
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // 선택된 뷰 표시
+            const targetView = document.getElementById(viewName + '-view');
+            if (targetView) {
+                targetView.classList.add('active');
+            }
+            
+            // 해당 탭 활성화
+            event.target.classList.add('active');
+            
+            currentView = viewName;
+
+            if (viewName === 'today') {
+                showTodayWod();
+            }
+        }
+
+        // 캘린더 렌더링
+        function renderCalendar() {
+            console.log('캘린더 렌더링');
+            
+            const calendar = document.getElementById('calendar');
+            const monthElement = document.getElementById('current-month');
+            
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            monthElement.textContent = `${year}년 ${month + 1}월`;
+            
+            // 캘린더 초기화
+            calendar.innerHTML = '';
+            
+            // 요일 헤더
+            const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+            weekdays.forEach(day => {
+                const header = document.createElement('div');
+                header.className = 'calendar-header';
+                header.textContent = day;
+                calendar.appendChild(header);
+            });
+            
+            // 날짜 계산
+            const firstDay = new Date(year, month, 1);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            const wods = loadWods();
+            const today = new Date();
+            
+            // 6주간 표시 (42일)
+            for (let i = 0; i < 42; i++) {
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
+                
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day';
+                dayElement.textContent = date.getDate();
+                
+                const dateStr = formatDate(date);
+                
+                // 오늘 표시
+                if (formatDate(date) === formatDate(today)) {
+                    dayElement.classList.add('today');
+                }
+                
+                // WOD 있는 날 표시
+                if (wods[dateStr]) {
+                    dayElement.classList.add('has-wod');
+                }
+                
+                // 선택된 날 표시
+                if (selectedDate && formatDate(date) === selectedDate) {
+                    dayElement.classList.add('selected');
+                }
+                
+                // 클릭 이벤트
+                dayElement.addEventListener('click', () => {
+                    selectDate(dateStr);
+                });
+                
+                calendar.appendChild(dayElement);
+            }
+        }
+
+        // 날짜 선택
+        function selectDate(dateStr) {
+            console.log('날짜 선택:', dateStr);
+            selectedDate = dateStr;
+            renderCalendar();
+            showSelectedDateWod();
+        }
+
+        // 선택된 날짜 WOD 표시
+        function showSelectedDateWod() {
+            const container = document.getElementById('selected-date-wod');
+            const wods = loadWods();
+            const wod = wods[selectedDate];
+            
+            if (wod) {
+                container.innerHTML = `
+                    <div class="wod-display">
+                        <h3>${formatDateKorean(new Date(selectedDate))} WOD</h3>
+                        
+                        ${wod.workoutTime ? `<p><strong>⏱️ 시간:</strong> ${wod.workoutTime}</p>` : ''}
+                        ${wod.conditioning ? `<p><strong>💪 운동:</strong><br>${wod.conditioning}</p>` : ''}
+                        ${wod.monthlyMission ? `<p><strong>🎯 미션:</strong> ${wod.monthlyMission}</p>` : ''}
+                        
+                        ${wod.levels && wod.levels.beginner ? `
+                            <div class="level-section beginner">
+                                <div class="level-title">🟢 초급자</div>
+                                <div>${wod.levels.beginner}</div>
+                            </div>
+                        ` : ''}
+                        
+                        ${wod.levels && wod.levels.intermediate ? `
+                            <div class="level-section intermediate">
+                                <div class="level-title">🟡 중급자</div>
+                                <div>${wod.levels.intermediate}</div>
+                            </div>
+                        ` : ''}
+                        
+                        ${wod.levels && wod.levels.advanced ? `
+                            <div class="level-section advanced">
+                                <div class="level-title">🔴 고급자</div>
+                                <div>${wod.levels.advanced}</div>
+                            </div>
+                        ` : ''}
+                        
+                        ${wod.generalNotes ? `<p><strong>📝 메모:</strong><br>${wod.generalNotes}</p>` : ''}
+                        
+                        <div class="quick-actions">
+                            <button onclick="editWod('${selectedDate}')">수정</button>
+                            <button onclick="deleteWod('${selectedDate}')">삭제</button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>운동 프로그램이 없습니다</h3>
+                        <p>이 날짜에 WOD를 추가해보세요.</p>
+                        <button class="btn" onclick="editWod('${selectedDate}')">WOD 추가</button>
+                    </div>
+                `;
+            }
+        }
+
+        // 오늘 WOD 표시
+        function showTodayWod() {
+            const container = document.getElementById('today-wod-display');
+            const today = formatDate(new Date());
+            const wods = loadWods();
+            const wod = wods[today];
+            
+            if (wod) {
+                container.innerHTML = `
+                    <div class="wod-display">
+                        <h3>📅 ${formatDateKorean(new Date())} WOD</h3>
+                        
+                        ${wod.workoutTime ? `<p><strong>⏱️ 시간:</strong> ${wod.workoutTime}</p>` : ''}
+                        ${wod.conditioning ? `<p><strong>💪 운동:</strong><br>${wod.conditioning}</p>` : ''}
+                        ${wod.monthlyMission ? `<p><strong>🎯 미션:</strong> ${wod.monthlyMission}</p>` : ''}
+                        
+                        ${wod.levels && wod.levels.beginner ? `
+                            <div class="level-section beginner">
+                                <div class="level-title">🟢 초급자</div>
+                                <div>${wod.levels.beginner}</div>
+                            </div>
+                        ` : ''}
+                        
+                        ${wod.levels && wod.levels.intermediate ? `
+                            <div class="level-section intermediate">
+                                <div class="level-title">🟡 중급자</div>
+                                <div>${wod.levels.intermediate}</div>
+                            </div>
+                        ` : ''}
+                        
+                        ${wod.levels && wod.levels.advanced ? `
+                            <div class="level-section advanced">
+                                <div class="level-title">🔴 고급자</div>
+                                <div>${wod.levels.advanced}</div>
+                            </div>
+                        ` : ''}
+                        
+                        ${wod.generalNotes ? `<p><strong>📝 메모:</strong><br>${wod.generalNotes}</p>` : ''}
+                        
+                        <button class="btn" onclick="editWod('${today}')">수정하기</button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>📅 ${formatDateKorean(new Date())}</h3>
+                        <p>오늘의 운동 프로그램을 작성해보세요!</p>
+                        <button class="btn" onclick="editWod('${today}')">오늘 WOD 작성</button>
+                    </div>
+                `;
+            }
+        }
+
+        // WOD 편집
+        function editWod(dateStr) {
+            console.log('WOD 편집:', dateStr);
+            selectedDate = dateStr;
+            
+            // 편집 뷰로 전환
+            showView('edit');
+            
+            // 기존 데이터 로드
+            const wods = loadWods();
+            const wod = wods[dateStr] || {
+                workoutTime: '',
+                conditioning: '',
+                monthlyMission: '',
+                levels: { beginner: '', intermediate: '', advanced: '' },
+                generalNotes: ''
+            };
+            
+            // 폼에 데이터 설정
+            setTimeout(() => {
+                try {
+                    document.getElementById('workout-time').value = wod.workoutTime || '';
+                    document.getElementById('conditioning').value = wod.conditioning || '';
+                    document.getElementById('monthly-mission').value = wod.monthlyMission || '';
+                    document.getElementById('beginner-notes').value = wod.levels.beginner || '';
+                    document.getElementById('intermediate-notes').value = wod.levels.intermediate || '';
+                    document.getElementById('advanced-notes').value = wod.levels.advanced || '';
+                    document.getElementById('general-notes').value = wod.generalNotes || '';
+                    
+                    document.getElementById('form-title').textContent = 
+                        `${formatDateKorean(new Date(dateStr))} WOD ${wod.conditioning ? '수정' : '작성'}`;
+                    
+                    console.log('폼 데이터 설정 완료');
+                } catch (error) {
+                    console.error('폼 설정 에러:', error);
+                }
+            }, 100);
+        }
+
+        // WOD 저장
+        function saveWod() {
+            console.log('WOD 저장');
+            
+            const wods = loadWods();
+            
+            const wodData = {
+                workoutTime: document.getElementById('workout-time').value,
+                conditioning: document.getElementById('conditioning').value,
+                monthlyMission: document.getElementById('monthly-mission').value,
+                levels: {
+                    beginner: document.getElementById('beginner-notes').value,
+                    intermediate: document.getElementById('intermediate-notes').value,
+                    advanced: document.getElementById('advanced-notes').value
+                },
+                generalNotes: document.getElementById('general-notes').value,
+                lastModified: new Date().toISOString()
+            };
+            
+            wods[selectedDate] = wodData;
+            saveWods(wods);
+            
+            // 이전 뷰로 돌아가기
+            if (formatDate(new Date()) === selectedDate) {
+                showView('today');
+            } else {
+                showView('calendar');
+                renderCalendar();
+                showSelectedDateWod();
+            }
+        }
+
+        // 편집 취소
+        function cancelEdit() {
+            if (formatDate(new Date()) === selectedDate) {
+                showView('today');
+            } else {
+                showView('calendar');
+            }
+        }
+
+        // WOD 삭제
+        function deleteWod(dateStr) {
+            if (confirm('정말로 이 WOD를 삭제하시겠습니까?')) {
+                const wods = loadWods();
+                delete wods[dateStr];
+                saveWods(wods);
+                renderCalendar();
+                showSelectedDateWod();
+            }
+        }
+
+        // 월 변경
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        // 앱 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('앱 초기화 시작');
+            
+            renderCalendar();
+            
+            // 오늘 날짜 자동 선택
+            const today = formatDate(new Date());
+            selectDate(today);
+            
+            console.log('앱 초기화 완료');
+        });
+    </script>
+</body>
+</html>
